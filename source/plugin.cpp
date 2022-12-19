@@ -63,11 +63,12 @@ float flightModelLocalAx, flightModelLocalAy, flightModelLocalAz;
 
 float FlightLoopSendUDPDatagram(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon);
 float FlightLoopCheckDatagramReceived(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon);
-void readPendingDatagrams();
 
 XPLMWindowID	gWindow = NULL;
 
-QUdpSocket UDPSocket;
+QUdpSocket *UDPSocketMainSender;
+QUdpSocket *UDPSocketSecondarySender;
+QUdpSocket *UDPSocketReceiver;
 
 void MyDrawWindowCallback(
         XPLMWindowID         inWindowID,
@@ -93,7 +94,7 @@ PLUGIN_API int XPluginStart(
         char *	outSig,
         char *	outDesc)
 {
-    strcpy(outName, "testQUDPSocket");
+    strcpy(outName, "CustomIO_UDP");
     strcpy(outSig, "coter.CustomIO_UDP");
     strcpy(outDesc, "Plugin to add custom network communication to X-Plane, performing input and ouput of data.");
 
@@ -113,7 +114,19 @@ PLUGIN_API int XPluginStart(
     DataRefFlightModelLocalAx = XPLMFindDataRef("sim/flightmodel/position/local_ax");
     DataRefFlightModelLocalAy = XPLMFindDataRef("sim/flightmodel/position/local_ay");
     DataRefFlightModelLocalAz = XPLMFindDataRef("sim/flightmodel/position/local_az");
-    UDPSocket.bind(QHostAddress::AnyIPv4, 15000);
+    UDPSocketMainSender = new QUdpSocket();
+    UDPSocketSecondarySender = new QUdpSocket();
+    UDPSocketReceiver = new QUdpSocket();
+    bool bindSuccess = UDPSocketReceiver->bind(QHostAddress::AnyIPv4, 15000, QAbstractSocket::ReuseAddressHint);
+    if (bindSuccess)
+    {
+        XPLMDebugString("Success binding UDP port!\n");
+    }
+    else
+    {
+        XPLMDebugString("Failed binding UDP port!\n");
+    }
+
     return 1;
 }
 
@@ -172,30 +185,20 @@ float FlightLoopSendUDPDatagram(float inElapsedSinceLastCall, float inElapsedTim
     dataToSend.append(QString::number(flightModelElev, 'f', 6).toUtf8());
     dataToSend.append(separator.toUtf8());
     QNetworkDatagram datagram(dataToSend,QHostAddress::Broadcast,10000);
-    UDPSocket.writeDatagram(datagram);
-    return 1.0;
+    UDPSocketMainSender->writeDatagram(datagram);
+    return 5.0;
 }
 
 float FlightLoopCheckDatagramReceived(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon)
 {
-    if (UDPSocket.hasPendingDatagrams())
+    if (UDPSocketReceiver->hasPendingDatagrams())
     {
-        //readPendingDatagrams();
-        QByteArray dataToSend;
-        dataToSend.clear();
-        QNetworkDatagram datagram(dataToSend,QHostAddress::Broadcast,12000);
-        UDPSocket.writeDatagram(datagram);
+        XPLMDebugString("Got some data from UDPSocketReceiver!\n");
+        QNetworkDatagram receivedDatagram = UDPSocketReceiver->receiveDatagram();
+        QNetworkDatagram datagramToSend;
+        datagramToSend.setDestination(QHostAddress::Broadcast, 12000);
+        datagramToSend.setData(receivedDatagram.data());
+        UDPSocketSecondarySender->writeDatagram(datagramToSend);
     }
     return -1;
-}
-
-void readPendingDatagrams()
-{
-    while (UDPSocket.hasPendingDatagrams())
-    {
-        QByteArray dataToSend;
-        dataToSend.clear();
-        QNetworkDatagram datagram(dataToSend,QHostAddress::Broadcast,12000);
-        UDPSocket.writeDatagram(datagram);
-    }
 }

@@ -25,7 +25,7 @@ win32 {
     TARGET = CustomIO_UDP
     TARGET_EXT = .xpl
     TARGET_CUSTOM_EXT = .xpl
-    DESTDIR = "D:/X-Plane 11/Resources/plugins/CustomIO_UDP/win_x64"
+    DESTDIR = "C:/X-Plane 11/Resources/plugins/CustomIO_UDP/win_x64"
 }
 
 
