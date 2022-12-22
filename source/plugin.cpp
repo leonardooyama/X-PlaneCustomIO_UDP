@@ -162,7 +162,7 @@ float FlightLoopCheckDatagramReceived(float inElapsedSinceLastCall, float inElap
 {
     if (UDPSocketReceiver->hasPendingDatagrams())
     {
-        XPLMDebugString("Got some data from UDPSocketReceiver!\n");
+        DebugToXPlaneLog("Got some data from UDPSocketReceiver!");
         QNetworkDatagram receivedDatagram = UDPSocketReceiver->receiveDatagram();
         QNetworkDatagram datagramToSend;
         datagramToSend.setDestination(QHostAddress::Broadcast, 12000);
